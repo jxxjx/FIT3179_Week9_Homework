@@ -1,0 +1,85 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "width": 900,
+  "height": 540,
+  "title": {
+    "text": "Malaysia Foreign Arrivals by Point of Entry",
+    "subtitle": ["Size = total arrivals (selected year)"]
+  },
+  "projection": { "type": "mercator", "center": [110, 4], "scale": 1600 },
+
+  "params": [
+    { "name": "yearSel", "value": 2023,
+      "bind": { "input": "range", "min": 2020, "max": 2023, "step": 1 } },
+    { "name": "typeSel", "value": "All",
+      "bind": { "input": "select", "options": ["All", "Air", "Land", "Sea"] } },
+    { "name": "topN", "value": 84,
+      "bind": { "input": "range", "min": 10, "max": 84, "step": 1 } }
+  ],
+
+  "layer": [
+    {
+      "data": {
+        "url": "https://github.com/jxxjx/FIT3179_Week9_Homework/blob/da83b849534ebe12c110a81ec30b2d3a49fba636/output.json",
+        "format": { "type": "topojson", "feature": "ne_110m_admin_0_countries" }
+      },
+      "mark": { "type": "geoshape", "fill": "#efefef", "stroke": "white" }
+    },
+    {
+      "data": {
+        "url": "https://github.com/jxxjx/FIT3179_Week9_Homework/blob/da83b849534ebe12c110a81ec30b2d3a49fba636/output.json",
+        "format": { "type": "topojson", "feature": "ne_110m_admin_0_countries" }
+      },
+      "transform": [{ "filter": "datum.properties.NAME == 'Malaysia'" }],
+      "mark": { "type": "geoshape", "fill": "#e6f2ff", "stroke": "#5b8def", "strokeWidth": 1 }
+    },
+    {
+      "data": { "url": "data/foreign_arrivals.csv",
+                "format": { "type": "csv", "parse": { "date": "date" } } },
+      "transform": [
+        {
+          "lookup": "poe",
+          "from": {
+            "data": { "url": "data/poe.csv" },
+            "key": "poe",
+            "fields": ["lat", "long", "type", "state"]
+          }
+        },
+        { "filter": "typeSel == 'All' || datum.type == typeSel" },
+        { "filter": "year(datum.date) == yearSel" },
+        {
+          "aggregate": [
+            { "op": "sum", "field": "arrivals", "as": "arrivals_total" },
+            { "op": "sum", "field": "arrivals_male", "as": "arrivals_male" },
+            { "op": "sum", "field": "arrivals_female", "as": "arrivals_female" }
+          ],
+          "groupby": ["poe", "lat", "long", "type", "state"]
+        },
+        { "calculate": "min(datum.arrivals_total, 500000)", "as": "arrivals_capped" },
+        { "window": [{ "op": "rank", "as": "rank" }],
+          "sort": [{ "field": "arrivals_total", "order": "descending" }] },
+        { "filter": "datum.rank <= topN" }
+      ],
+      "mark": { "type": "circle", "opacity": 0.75, "stroke": "white", "strokeWidth": 0.5 },
+      "encoding": {
+        "longitude": { "field": "long", "type": "quantitative" },
+        "latitude":  { "field": "lat",  "type": "quantitative" },
+        "size": {
+          "field": "arrivals_capped",
+          "type": "quantitative",
+          "title": "Arrivals (capped at 500k)",
+          "scale": { "type": "sqrt", "domain": [0, 500000], "range": [0, 1200] }
+        },
+        "color": { "field": "type", "type": "nominal", "title": "POE Type" },
+        "tooltip": [
+          { "field": "poe", "type": "nominal", "title": "Point of Entry" },
+          { "field": "state", "type": "nominal", "title": "State" },
+          { "field": "type", "type": "nominal", "title": "Type" },
+          { "field": "arrivals_total", "type": "quantitative", "title": "Arrivals", "format": "," },
+          { "field": "arrivals_male", "type": "quantitative", "title": "Male", "format": "," },
+          { "field": "arrivals_female", "type": "quantitative", "title": "Female", "format": "," }
+        ]
+      }
+    }
+  ]
+}
