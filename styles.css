@@ -1,0 +1,19 @@
+
+
+body {
+            text-align: center; /* Center the body content */
+    
+        }
+
+        h1 {
+            font-size: 2.5em; /* Adjust title size */
+            margin-bottom: 20px; /* Add space below the title */
+        }
+
+        #symbol_map {
+            display: flex;
+            justify-content: center; 
+            margin: 0 auto; 
+        }
+
+		
